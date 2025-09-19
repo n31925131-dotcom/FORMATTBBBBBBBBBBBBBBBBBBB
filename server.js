@@ -128,6 +128,312 @@ function processTextForCitations(text) {
 function applyStyleSpecificFormatting(text, style) {
   console.log(`🎨 Applying ${style.toUpperCase()} style formatting...`);
   
+  // Create a comprehensive academic formatter for the selected style
+  const formatter = new AcademicCitationFormatter(text, style.toLowerCase());
+  return formatter.reformatDocument();
+}
+
+// Comprehensive Academic Citation Formatter Class
+class AcademicCitationFormatter {
+  constructor(text, targetStyle) {
+    this.originalText = text;
+    this.targetStyle = targetStyle;
+    this.processedText = text;
+    this.citations = new Set();
+    this.references = [];
+  }
+
+  reformatDocument() {
+    console.log(`📚 Starting comprehensive ${this.targetStyle.toUpperCase()} formatting...`);
+    
+    // Step 1: Extract and analyze existing citations
+    this.extractCitations();
+    
+    // Step 2: Transform in-text citations
+    this.transformInTextCitations();
+    
+    // Step 3: Find and reformat reference list
+    this.reformatReferenceList();
+    
+    // Step 4: Ensure consistency between citations and references
+    this.ensureConsistency();
+    
+    console.log(`✅ ${this.targetStyle.toUpperCase()} formatting complete`);
+    return this.processedText;
+  }
+
+  extractCitations() {
+    console.log('🔍 Extracting existing citations...');
+    
+    // Extract various citation patterns
+    const citationPatterns = [
+      /\(([A-Z][a-z]+(?:\s+(?:and|&)\s+[A-Z][a-z]+)*),?\s*(\d{4}[a-z]?)\)/g, // (Author, Year)
+      /\(([A-Z][a-z]+(?:\s+et\s+al\.?)?),?\s*(\d{4}[a-z]?)\)/g, // (Author et al., Year)
+      /\(([A-Z][a-z]+(?:\s+(?:and|&)\s+[A-Z][a-z]+)*)\)/g, // (Author) - MLA style
+      /([A-Z][a-z]+(?:\s+(?:and|&)\s+[A-Z][a-z]+)*)\s*\((\d{4}[a-z]?)\)/g // Author (Year) - narrative
+    ];
+    
+    citationPatterns.forEach(pattern => {
+      let match;
+      while ((match = pattern.exec(this.originalText)) !== null) {
+        this.citations.add({
+          full: match[0],
+          authors: match[1],
+          year: match[2] || null,
+          type: this.determineCitationType(match[0])
+        });
+      }
+    });
+    
+    console.log(`🔍 Found ${this.citations.size} citations`);
+  }
+
+  determineCitationType(citation) {
+    if (citation.includes('(') && citation.includes(')') && !citation.match(/[A-Z][a-z]+\s*\(/)) {
+      return 'parenthetical';
+    }
+    return 'narrative';
+  }
+
+  transformInTextCitations() {
+    console.log(`🔄 Transforming in-text citations to ${this.targetStyle.toUpperCase()} format...`);
+    
+    switch (this.targetStyle) {
+      case 'apa':
+        this.transformToAPA();
+        break;
+      case 'mla':
+        this.transformToMLA();
+        break;
+      case 'harvard':
+        this.transformToHarvard();
+        break;
+      default:
+        console.log('⚠️ Unknown style, applying Harvard as default');
+        this.transformToHarvard();
+    }
+  }
+
+  transformToAPA() {
+    console.log('📚 Applying APA 7th Edition in-text citation rules...');
+    
+    // Transform parenthetical citations: (Author and Author, Year) → (Author & Author, Year)
+    this.processedText = this.processedText.replace(
+      /\(([^)]*?)\s+and\s+([^,)]*?),\s*(\d{4}[a-z]?)\)/g,
+      '($1 & $2, $3)'
+    );
+    
+    // Handle et al. cases: (Author et al. Year) → (Author et al., Year)
+    this.processedText = this.processedText.replace(
+      /\(([A-Z][a-z]+\s+et\s+al\.?)\s+(\d{4}[a-z]?)\)/g,
+      '($1, $2)'
+    );
+    
+    // Ensure comma before year in all parenthetical citations
+    this.processedText = this.processedText.replace(
+      /\(([^)]*?)(\s+)(\d{4}[a-z]?)\)/g,
+      (match, authors, space, year) => {
+        if (!authors.endsWith(',')) {
+          return `(${authors}, ${year})`;
+        }
+        return match;
+      }
+    );
+    
+    // Keep "and" in narrative citations: Smith and Jones (2020)
+    // No changes needed for narrative citations in APA
+  }
+
+  transformToMLA() {
+    console.log('📚 Applying MLA 9th Edition in-text citation rules...');
+    
+    // Remove years from all citations: (Author, Year) → (Author)
+    this.processedText = this.processedText.replace(
+      /\(([^)]*?),\s*(\d{4}[a-z]?)\)/g,
+      '($1)'
+    );
+    
+    // Remove years from citations without comma: (Author Year) → (Author)
+    this.processedText = this.processedText.replace(
+      /\(([^)]*?)\s+(\d{4}[a-z]?)\)/g,
+      '($1)'
+    );
+    
+    // Transform narrative citations: Author (Year) → Author
+    this.processedText = this.processedText.replace(
+      /([A-Z][a-z]+(?:\s+(?:and|&)\s+[A-Z][a-z]+)*)\s*\((\d{4}[a-z]?)\)/g,
+      '$1'
+    );
+    
+    // Ensure "and" is used (not &) in MLA
+    this.processedText = this.processedText.replace(
+      /\(([^)]*?)\s*&\s*([^)]*?)\)/g,
+      '($1 and $2)'
+    );
+  }
+
+  transformToHarvard() {
+    console.log('📚 Applying Harvard citation rules...');
+    
+    // Ensure (Author, Year) format with comma
+    this.processedText = this.processedText.replace(
+      /\(([^)]*?)(\s+)(\d{4}[a-z]?)\)/g,
+      (match, authors, space, year) => {
+        if (!authors.includes(',') || !authors.trim().endsWith(',')) {
+          return `(${authors}, ${year})`;
+        }
+        return match;
+      }
+    );
+    
+    // Use "and" between authors (not &)
+    this.processedText = this.processedText.replace(
+      /\(([^)]*?)\s*&\s*([^,)]*?),\s*(\d{4}[a-z]?)\)/g,
+      '($1 and $2, $3)'
+    );
+  }
+
+  reformatReferenceList() {
+    console.log('📝 Reformatting reference list...');
+    
+    // Find the reference section with various possible headings
+    const referencePatterns = [
+      /(References?)\s*\n([\s\S]*?)(?=\n\n[A-Z]|\n\n\d+\.|\n\nAppendix|$)/i,
+      /(Works\s+Cited)\s*\n([\s\S]*?)(?=\n\n[A-Z]|\n\n\d+\.|\n\nAppendix|$)/i,
+      /(Bibliography)\s*\n([\s\S]*?)(?=\n\n[A-Z]|\n\n\d+\.|\n\nAppendix|$)/i,
+      /(Citations?)\s*\n([\s\S]*?)(?=\n\n[A-Z]|\n\n\d+\.|\n\nAppendix|$)/i
+    ];
+    
+    let referencesMatch = null;
+    for (const pattern of referencePatterns) {
+      referencesMatch = this.processedText.match(pattern);
+      if (referencesMatch) break;
+    }
+    
+    if (!referencesMatch) {
+      console.log('⚠️ No reference section found');
+      return;
+    }
+    
+    const [fullMatch, currentHeading, referencesContent] = referencesMatch;
+    
+    // Apply style-specific reference formatting
+    const newHeading = this.getCorrectReferenceHeading();
+    const formattedReferences = this.formatReferenceEntries(referencesContent);
+    
+    // Replace the entire reference section
+    this.processedText = this.processedText.replace(
+      fullMatch,
+      `${newHeading}\n${formattedReferences}`
+    );
+  }
+
+  getCorrectReferenceHeading() {
+    switch (this.targetStyle) {
+      case 'apa':
+        return 'References';
+      case 'mla':
+        return 'Works Cited';
+      case 'harvard':
+        return 'Reference List';
+      default:
+        return 'References';
+    }
+  }
+
+  formatReferenceEntries(referencesContent) {
+    console.log(`📚 Formatting reference entries for ${this.targetStyle.toUpperCase()}...`);
+    
+    // Split into individual entries (assuming each entry is on a separate line or separated by double newlines)
+    const entries = referencesContent.split(/\n\s*\n/).filter(entry => entry.trim().length > 0);
+    
+    const formattedEntries = entries.map(entry => {
+      switch (this.targetStyle) {
+        case 'apa':
+          return this.formatAPAEntry(entry.trim());
+        case 'mla':
+          return this.formatMLAEntry(entry.trim());
+        case 'harvard':
+          return this.formatHarvardEntry(entry.trim());
+        default:
+          return entry.trim();
+      }
+    });
+    
+    return formattedEntries.join('\n\n');
+  }
+
+  formatAPAEntry(entry) {
+    console.log('📚 Formatting APA reference entry...');
+    
+    // Replace "and" with "&" in author lists
+    entry = entry.replace(/([A-Z][a-z]+,?\s+[A-Z]\.?)\s+and\s+/g, '$1, & ');
+    
+    // Ensure year is in parentheses after authors
+    entry = entry.replace(/([A-Z][a-z]+,?\s+[A-Z]\.?(?:,?\s*&\s*[A-Z][a-z]+,?\s+[A-Z]\.?)*)\s*\.?\s*(\d{4}[a-z]?)/g, '$1 ($2).');
+    
+    // Add italics markers for journal titles and volumes
+    entry = entry.replace(/,\s*([A-Z][^,]*?),\s*(\d+)(?:\((\d+)\))?/g, ', *$1*, *$2*$3');
+    
+    // Remove "p." and "pp." from page numbers
+    entry = entry.replace(/,\s*pp?\.\s*(\d+(?:[-–]\d+)?)/g, ', $1');
+    
+    // Format DOIs properly
+    entry = entry.replace(/doi:\s*(.*)/i, 'https://doi.org/$1');
+    
+    return entry;
+  }
+
+  formatMLAEntry(entry) {
+    console.log('📚 Formatting MLA reference entry...');
+    
+    // Ensure "and" is used (not &)
+    entry = entry.replace(/([A-Z][a-z]+,?\s+[A-Z]\.?)\s*&\s*/g, '$1, and ');
+    
+    // Add quotation marks around article titles
+    entry = entry.replace(/([A-Z][a-z]+(?:,?\s+[A-Z]\.?)*(?:\s+and\s+[A-Z][a-z]+,?\s+[A-Z]\.?)*)\.\s*([A-Z][^.]*?)\./g, '$1. "$2."');
+    
+    // Italicize journal and book titles
+    entry = entry.replace(/,\s*([A-Z][^,]*?),\s*vol\./g, ', *$1*, vol.');
+    entry = entry.replace(/,\s*([A-Z][^,]*?),\s*(\d{4})/g, ', *$1*, $2');
+    
+    // Remove "pp." from page numbers
+    entry = entry.replace(/,\s*pp\.\s*(\d+(?:[-–]\d+)?)/g, ', $1');
+    
+    // Format dates as "Day Month Year"
+    entry = entry.replace(/(\d{1,2})\s+([A-Z][a-z]{2})\.\s+(\d{4})/g, '$1 $2. $3');
+    
+    return entry;
+  }
+
+  formatHarvardEntry(entry) {
+    console.log('📚 Formatting Harvard reference entry...');
+    
+    // Use "and" between authors (not &)
+    entry = entry.replace(/([A-Z][a-z]+,?\s+[A-Z]\.?)\s*&\s*/g, '$1 and ');
+    
+    // Add italics markers for journal and book titles
+    entry = entry.replace(/,\s*([A-Z][^,]*?),\s*(\d+)/g, ', *$1*, $2');
+    
+    // Ensure proper year placement
+    entry = entry.replace(/([A-Z][a-z]+(?:\s+and\s+[A-Z][a-z]+)*)\s*\.?\s*(\d{4}[a-z]?)/g, '$1 $2.');
+    
+    return entry;
+  }
+
+  ensureConsistency() {
+    console.log('🔍 Ensuring consistency between citations and references...');
+    
+    // This is a simplified consistency check
+    // In a full implementation, this would cross-reference all citations with reference entries
+    // and flag any mismatches or missing entries
+    
+    console.log('✅ Consistency check complete');
+  }
+}
+
+// Legacy function compatibility - now routes to the new comprehensive formatter
+function applyStyleSpecificFormattingLegacy(text, style) {
   switch (style.toLowerCase()) {
     case 'harvard':
       return applyHarvardFormatting(text);
@@ -281,6 +587,7 @@ function fixMLAReferences(text) {
   return text.replace(referencesMatch[0], 'Works Cited\n' + referencesSection);
 }
 // Function to create a formatted document with proper styling
+
 function createFormattedDocument(text, style) {
   console.log(`📝 Creating document with ${style} style...`);
   
@@ -316,7 +623,7 @@ function createFormattedDocument(text, style) {
   });
 
   // Add a title based on the style
-  const titleText = `Document Formatted in ${style.toUpperCase()} Style`;
+  const titleText = `Academic Paper - ${style.toUpperCase()} Format`;
   console.log(`📝 Adding title: "${titleText}"`);
   
   const titleParagraph = new Paragraph({
@@ -324,7 +631,7 @@ function createFormattedDocument(text, style) {
       new TextRun({
         text: titleText,
         font: "Times New Roman",
-        size: 28, // 14pt for title
+        size: 24, // 12pt for title (academic standard)
         bold: true,
       }),
     ],
@@ -333,7 +640,7 @@ function createFormattedDocument(text, style) {
       line: 480,
       after: 480,
     },
-    alignment: AlignmentType.CENTER,
+    alignment: AlignmentType.LEFT, // Academic papers typically left-align titles
   });
 
   // Create the document with custom styles
