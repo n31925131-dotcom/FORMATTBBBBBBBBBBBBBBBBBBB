@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FormatGenius Lite</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input[type="file"], select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        
+        input[type="file"]:focus, select:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 18px;
+            width: 100%;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .processing {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .info {
+            background-color: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 30px;
+        }
+        
+        .info h3 {
+            margin-top: 0;
+            color: #0066cc;
+        }
+        
+        .info ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>FormatGenius Lite</h1>
+        
+        <form id="formatForm">
+            <div class="form-group">
+                <label for="fileInput">Upload your .docx file:</label>
+                <input type="file" id="fileInput" accept=".docx" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="styleSelect">Choose formatting style:</label>
+                <select id="styleSelect" required>
+                    <option value="">Select a style...</option>
+                    <option value="harvard">Harvard</option>
+                    <option value="apa">APA</option>
+                    <option value="mla">MLA</option>
+                </select>
+            </div>
+            
+            <button type="submit" id="formatButton">Format Document</button>
+        </form>
+        
+        <div id="status" class="hidden"></div>
+        
+        <div class="info">
+            <h3>What this tool does:</h3>
+            <ul>
+                <li>✅ <strong>REBUILDS</strong> your document with Times New Roman 12pt font</li>
+                <li>✅ <strong>APPLIES</strong> double spacing throughout</li>
+                <li>✅ <strong>CONVERTS</strong> URLs to simple citations (e.g., "example.com, 2024")</li>
+                <li>✅ <strong>ADDS</strong> a formatted title based on your chosen style</li>
+                <li>✅ <strong>SETS</strong> proper 1-inch margins</li>
+            </ul>
+            <p><strong>Note:</strong> This tool completely rebuilds your document with proper academic formatting. The output will be visually different from your input file. Upload a .docx file to test it!</p>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('formatForm');
+        const fileInput = document.getElementById('fileInput');
+        const styleSelect = document.getElementById('styleSelect');
+        const formatButton = document.getElementById('formatButton');
+        const status = document.getElementById('status');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const file = fileInput.files[0];
+            const style = styleSelect.value;
+            
+            if (!file) {
+                showStatus('Please select a file to upload.', 'error');
+                return;
+            }
+            
+            if (!style) {
+                showStatus('Please select a formatting style.', 'error');
+                return;
+            }
+            
+            // Show processing status
+            showStatus('Processing your document... Please wait.', 'processing');
+            formatButton.disabled = true;
+            
+            try {
+                // Create FormData to send file
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('style', style);
+                
+                // Send request to backend
+                const response = await fetch('/api/format', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to format document');
+                }
+                
+                // Get the formatted document as a blob
+                const blob = await response.blob();
+                
+                // Create download link and trigger download
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `formatted-document-${style}.docx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                // Show success message
+                showStatus(`✅ Formatting complete! Your document has been rebuilt with Times New Roman 12pt font and double spacing. URLs have been converted to citations. The download should start automatically.`, 'success');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                formatButton.disabled = false;
+            }
+        });
+        
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = type;
+            status.classList.remove('hidden');
+        }
+        
+        // Test backend connection on page load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch('/api/health');
+                if (response.ok) {
+                    console.log('✅ Backend connection successful');
+                } else {
+                    console.warn('⚠️ Backend health check failed');
+                }
+            } catch (error) {
+                console.error('❌ Cannot connect to backend:', error);
+                showStatus('⚠️ Warning: Cannot connect to backend server. Make sure the server is running on port 3001.', 'error');
+            }
+        });
+    </script>
+</body>
+</html>
